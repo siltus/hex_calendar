@@ -10,15 +10,15 @@ import datetime
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 
-MONTHS_LEFT = 30
-MONTHS_TOP = 390
-MONTH_HORIZONTAL_STEP = 220
-MONTH_VERTICAL_STEP = 160
-MONTHS_IN_ROW = 4
-MONTH_DAYS_LINE_SPACING = 5
-MONTH_WEEK_PADDING = 5
-YEAR_TOP_PADDING = 10
-YEAR_RIGHT_PADDING = 10
+MONTHS_LEFT = 160
+MONTHS_TOP = 900
+MONTH_HORIZONTAL_STEP = 560
+MONTH_VERTICAL_STEP = 400
+MONTHS_IN_ROW = 3
+MONTH_DAYS_LINE_SPACING = 10
+MONTH_WEEK_PADDING = 10
+YEAR_TOP_PADDING = 100
+YEAR_RIGHT_PADDING = 200
 
 weekdays = {
     0: 'Mo',
@@ -91,7 +91,7 @@ class MonthObject(object):
         for d in get_weekdays(self.first_weekday):
             weekday_text = weekdays[d].upper() if upper else weekdays[d]
             w, h = self.draw.textsize(weekday_text, font=self.week_font)
-            text_obj = TextObject(weekday_text, x, y, self.week_font, weekend_color if d in [5, 6] else color)
+            text_obj = TextObject(weekday_text, x, y, self.week_font, weekend_color if d in [(self.first_weekday - 1) % 7, (self.first_weekday - 2) % 7] else color)
             x += w + space_w
             self.items.append(text_obj)
         return x - orig_x + w - space_w, h
@@ -101,7 +101,7 @@ class MonthObject(object):
         space_w, space_h = self.draw.textsize(' ', font=self.week_font)
         orig_x, orig_y = x, y
         h = 0
-        for i, v in enumerate(calendar.Calendar().itermonthdays2(self.year, self.month)):
+        for i, v in enumerate(calendar.Calendar(self.first_weekday).itermonthdays2(self.year, self.month)):
             day, wd = v
             day_str = '{:02x}'.format(day)
             if upper:
@@ -111,7 +111,7 @@ class MonthObject(object):
                 x = 0
                 y += h + MONTH_DAYS_LINE_SPACING
             if day:
-                text_obj = TextObject(day_str, x, y, self.week_font, weekend_color if wd in [5, 6] else color)
+                text_obj = TextObject(day_str, x, y, self.week_font, weekend_color if wd in [(self.first_weekday - 1) % 7, (self.first_weekday - 2) % 7] else color)
                 x += w + space_w
                 self.items.append(text_obj)
             else:
@@ -136,7 +136,7 @@ class MonthObject(object):
 
 def add_year(img, year, font, color, upper=False):
     """Add year"""
-    txt_img = Image.new('RGBA', (100, 100))
+    txt_img = Image.new('RGBA', (400, 200))
     txt_img_draw = ImageDraw.Draw(txt_img)
     year_text = '{:x}'.format(year)
     if upper:
@@ -180,24 +180,65 @@ def add_months(img, year, **kwargs):
         )
         month_object.render()
 
+def add_header(img, text, font, color):
+    """Add header"""
+    txt_img = Image.new('RGBA', (800, 500))
+    txt_img_draw = ImageDraw.Draw(txt_img)
+    txt_img_draw.text((0, 0), text, font=font, fill=color)
+    x = (img.size[0] - txt_img.size[0]) // 2
+    y = (MONTHS_TOP - txt_img.size[1]) // 2
+    img.paste(txt_img, (x, y))
+
 
 def make_hex_calendar(img, year):
     """Make Hex Calendar"""
-    image_path = 'spb_python_logo.png'
-    add_image(img, image_path)
+    #image_path = 'spb_python_logo.jpg'
+    #add_image(img, image_path)
 
-    month_font = ImageFont.truetype('FreeMonoBold.ttf', 18)
-    week_font = ImageFont.truetype('FreeMonoBold.ttf', 15)
-    year_font = ImageFont.truetype('FreeMonoBold.ttf', 25)
+    #add ascii art :)
+    ### generated with https://asciiart.club/
+    header = '''
+                             ^######                 ,######
+                              ^#####N               ,######
+                               ^#####N             ,######
+                                ^#####N           ,######
+                                 '#####N         ,######
+                                  "#####N       ,######
+                                   '#####      ,######
+                                    "###      ,######
+                                     "#       ######
+                                             ######
+                                           ,######
+                                          ######^
+                                         `````
+     
+     
+     
+     
+    1##        ,##   ,######m     ##N     j##      ,##m       ,######m,    #########
+     \##      ,##  ]##^    `@##  j####p   j##     ,##\##     ##M     %##   ## ``````
+      \##    ,##   ##        @#b j## @#N  j##    ,##  \#N   @#M            ##s,,,,,
+       \##  ,##    ##        @#b j##  "## j##   ,##,,,,@#b  @#b   @MMM##b  ##""""""
+        \##,##     @##      ]##  j##    @#M##  ,##""""""@#b ^##Q     ]##b  ##
+         "###       ^%#######"   j##     "###  ##`       @#b  "@#####M]#b  #########                                                                                                    
+ '''
+
+    month_font = ImageFont.truetype('FreeMonoBold.ttf', 36)
+    week_font = ImageFont.truetype('FreeMonoBold.ttf', 30)
+    year_font = ImageFont.truetype('FreeMonoBold.ttf', 80)
     month_color = (70, 130, 180, 255)
     week_color = (70, 130, 180, 255)
     weekend_color = (255, 220, 75, 255)
     days_color = (255, 255, 255, 255)
     year_color = (80, 130, 180, 255)
-    first_weekday = MONDAY
+    first_weekday = SUNDAY
     month_upper = False
     week_upper = False
     days_upper = False
+
+    calendar.setfirstweekday(first_weekday)
+
+    add_header(img, header, ImageFont.truetype('CascadiaMono.ttf', 16), (255, 255, 255, 255))
 
     add_months(
         img, 
@@ -220,12 +261,12 @@ def make_hex_calendar(img, year):
 
 def main():
     """Main"""
-    width = 900
-    height = 900
+    width = 1800
+    height = 2546 # A4 ratio
 
     img = Image.new('RGB', (width, height), 'black')
 
-    year = 2018
+    year = 2020
     make_hex_calendar(img, year)
 
     img.save('hex_calendar_{}.png'.format(year))
